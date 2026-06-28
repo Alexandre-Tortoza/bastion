@@ -1,8 +1,10 @@
-# Bastion — Academic Research Wiki
+<p align="center">
+  <img src=".assets/bastion-logo.png" width="160" alt="Bastion">
+</p>
 
-Uma plataforma de pesquisa acadêmica baseada no padrão
-[LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) com
-memória persistente de decisões, artigos e referências.
+# Bastion — Wiki de Pesquisa Acadêmica com LLM
+
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 > **compile, don't retrieve** — a wiki é um artefato persistente que acumula
 > conhecimento a cada fonte ingerida e a cada pergunta respondida. O LLM escreve
@@ -10,311 +12,114 @@ memória persistente de decisões, artigos e referências.
 
 ---
 
-## Visão Geral
+## O Problema
 
-Bastion integra quatro capacidades principais:
+Durante minha graduação, observei um padrão recorrente entre colegas que usavam LLMs para auxiliar na escrita de artigos acadêmicos: o modelo frequentemente trazia afirmações que não tinham respaldo nos papers que o pesquisador realmente tinha lido, inventava citações ou fazia deduções sem fundamento no corpus de referências do trabalho.
 
-1. **Ingestão de artigos acadêmicos** — PDF/HTML → Markdown → LLM extrai notas
-   estruturadas e integra na wiki (resumo, metodologia, resultados, limitações,
-   citações com página)
-2. **Chat com a wiki** — perguntas respondidas com trechos exatos e referência
-   à página do PDF original (FTS5 + embeddings)
-3. **Decisões de pesquisa** — armazenamento ADR-style do *porquê* de cada
-   escolha metodológica, para que o LLM sempre considere o contexto completo
-4. **Revisão inteligente de artigos** — o LLM lê o LaTeX em produção contra a
-   wiki e aponta contradições, gaps, ou oportunidades
+O problema não era o modelo em si — era que ele operava sem estar ancorado ao que o pesquisador de fato conhecia. Cada pergunta começava do zero, sem memória das fontes que o usuário havia acumulado.
 
 ---
 
-## Arquitetura
+## O que é LLM-Wiki
 
-### Camadas
+O conceito de **LLM-Wiki** foi proposto por [Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) como alternativa ao RAG tradicional. A ideia central é simples:
 
-```
-+----------------------------------------------------+
-|                Nuxt 3 (Nitro)                      |
-|  Frontend Vue 3 + server routes proxy              |
-|  Nitro faz fetch() para o Rust backend             |
-+--------------------+-------------------------------+
-                     | HTTP / WebSocket
-+--------------------v-------------------------------+
-|          Rust + axum (backend da wiki)             |
-|                                                     |
-|  +----------+  +---------+  +---------+  +-------+  |
-|  |  Ingest  |  |  Query  |  |  Review |  | Wiki  |  |
-|  | Pipeline |  |  Engine |  |  Engine |  |  Mgr  |  |
-|  +----+-----+  +----+----+  +----+----+  +---+---+  |
-|       |             |            |           |       |
-|  +----v-------------v------------v-----------v---+  |
-|  |        SQLite + Markdown (git)                |  |
-|  |   FTS5 | Embeddings | Páginas | Decisões      |  |
-|  +------------------------------------------------+  |
-+------------------------------------------------------+
-```
+Em vez de buscar documentos a cada query, o LLM **compila** um artefato de conhecimento — uma wiki em Markdown — e o mantém atualizado. Cada paper ingerido, cada decisão tomada, cada pergunta respondida **escreve** nessa wiki. Quando o modelo precisa responder ou sugerir algo, ele opera dentro desse artefato, não fora dele.
 
-### Stack
+O resultado é um sistema que "sabe o que você sabe" — e nada além disso.
 
-| Camada | Tecnologia |
+---
+
+## A Solução — O que o Bastion faz
+
+O Bastion é um protótipo que aplica o LLM-Wiki ao contexto de pesquisa acadêmica. O objetivo é criar um ambiente onde o pesquisador possa:
+
+**1. Ingerir papers (PDF)**
+O paper é convertido para texto, o LLM extrai notas estruturadas e cria páginas atômicas na wiki — conceitos, métodos, resultados e estratégias, cada um como uma nota própria com link de volta para o paper de origem.
+
+**2. Chat ancorado na wiki**
+Perguntas são respondidas apenas com base no que está na wiki. A busca combina FTS5 (textual) e embeddings (semântica) via Reciprocal Rank Fusion — sem invenções, com referência exata à fonte.
+
+**3. Decisões de pesquisa (ADR-style)**
+As escolhas metodológicas do pesquisador ficam registradas no formato Architecture Decision Record. Antes de qualquer sugestão, o modelo consulta essas decisões — e não propõe o que já foi descartado com razão.
+
+**4. Revisão do artigo em LaTeX**
+O pesquisador escreve o paper diretamente no editor LaTeX integrado. Ao solicitar revisão, o LLM lê o rascunho contra a wiki e aponta contradições, afirmações sem suporte nas referências e oportunidades de citação.
+
+**5. Grafo de conhecimento**
+Visualização das conexões entre as notas da wiki — papers, conceitos, métodos, resultados e estratégias como nós; wikilinks como arestas.
+
+---
+
+## Stack
+
+**Backend**
+
+| Tecnologia | Uso |
 |---|---|
-| Frontend | Nuxt 3 (Vue 3 + Nitro) |
-| Backend | Rust + axum + tokio |
-| Banco | SQLite (rusqlite, FTS5, sqlite-vec) |
-| Wiki | Markdown em disco + git2 (versionamento) |
-| LLM | Traits genéricas (Anthropic, OpenAI, etc.) |
-| Embeddings | OpenAI / Voyage / Google (via traits) |
-| PDF→Markdown | `pdf-extract` / `lopdf` + pandoc |
-| Editor LaTeX | CodeMirror 6 (vue-codemirror) |
-| Chat | WebSocket |
-| Estilo | Tailwind CSS + Nuxt UI |
+| Rust (2024 edition) | Linguagem principal do backend |
+| axum + tokio | Servidor HTTP assíncrono |
+| rusqlite + FTS5 | Banco de dados e busca textual |
+| git2 | Versionamento automático da wiki |
+| refinery | Migrações do banco |
 
-### Fluxo de requisição
+**Frontend**
 
-```
-Browser (Vue) ──> Nuxt (Nitro) ──fetch()──> Rust (axum) ──> SQLite + Wiki
-                     |                            ^
-                     |  /api/wiki/*               |
-                     |  /api/chat/query           |
-                     +---> proxy p/ Rust (localhost:PORT)
-```
-
-Nitro **não** duplica lógica da wiki. Cada server route faz `fetch()` para o
-Rust backend, que é a única fonte de verdade. Nuxt cuida só de SSR, layout,
-autenticação (se houver) e roteamento do frontend.
-
----
-
-## Estrutura de Diretórios
-
-```
-bastion/
-├── AGENTS.md                  # Instruções canônicas para o LLM
-├── index.md                   # Este arquivo
-│
-├── raw/                       # Fontes brutas (imutáveis)
-│   ├── papers/
-│   │   └── <paper-name>/
-│   │       ├── original.pdf
-│   │       ├── original.md         # PDF → Markdown (conversão)
-│   │       └── extracted-notes.md  # Notas extraídas pelo LLM
-│   └── assets/
-│
-├── wiki/                      # Wiki auto-mantida pelo LLM
-│   ├── index.md               # Catálogo de tudo na wiki
-│   ├── log.md                 # Registro cronológico
-│   ├── papers/                # Página por artigo
-│   ├── concepts/              # Conceitos cross-referenciados
-│   ├── methods/               # Metodologias
-│   ├── decisions/             # Decisões de pesquisa (ADR-style)
-│   ├── comparisons/           # Comparações entre abordagens
-│   ├── synthesis/             # Síntese do estado da arte
-│   └── reviews/               # Revisões de artigos em produção
-│
-├── app/                       # Código da aplicação
-│   ├── Cargo.toml             # Workspace Rust
-│   ├── crates/
-│   │   ├── bastion-core/      # Tipos, traits, IDs
-│   │   ├── bastion-store/     # SQLite (FTS5, embeddings, índices)
-│   │   ├── bastion-wiki/      # Operações na wiki (CRUD de páginas)
-│   │   ├── bastion-ingest/    # Pipeline PDF → Markdown → Notas
-│   │   ├── bastion-llm/       # Providers LLM + Embedders
-│   │   ├── bastion-web/       # API server (axum + WebSocket)
-│   │   └── bastion-review/    # Motor de revisão de artigos
-│   │
-│   └── frontend/              # Nuxt 3
-│       ├── nuxt.config.ts
-│       ├── package.json
-│       ├── app.vue
-│       ├── pages/
-│       │   ├── index.vue          # Dashboard
-│       │   ├── editor.vue         # Editor LaTeX
-│       │   ├── chat.vue           # Chat
-│       │   ├── wiki/
-│       │   │   ├── index.vue      # Navegador wiki
-│       │   │   ├── papers.vue     # Lista de artigos
-│       │   │   └── decisions.vue  # Lista de decisões
-│       │   ├── ingest.vue         # Upload de PDF
-│       │   └── review.vue         # Revisão de artigo
-│       ├── components/
-│       │   ├── LaTeXEditor.vue
-│       │   ├── ChatPanel.vue
-│       │   ├── ReferencePanel.vue
-│       │   ├── WikiTree.vue
-│       │   ├── DecisionCard.vue
-│       │   ├── PdfViewer.vue
-│       │   └── SuggestionList.vue
-│       ├── server/              # Nitro (proxy para Rust)
-│       │   ├── api/
-│       │   │   ├── wiki/
-│       │   │   │   ├── pages.get.ts
-│       │   │   │   ├── pages/[path].get.ts
-│       │   │   │   └── decisions.get.ts
-│       │   │   ├── chat/
-│       │   │   │   └── query.post.ts
-│       │   │   ├── ingest/
-│       │   │   │   └── upload.post.ts
-│       │   │   └── review/
-│       │   │       └── analyze.post.ts
-│       │   └── utils/
-│       │       └── backend.ts   # Helper fetch() p/ Rust backend
-│       └── composables/
-│           └── useWiki.ts
-│
-└── data/                      # Dados runtime
-    ├── db.sqlite              # SQLite (FTS5 + embeddings)
-    └── models/                # Reservado para modelos locais
-```
-
----
-
-## Fluxos
-
-### Ingestão
-
-```
-PDF enviado pelo usuário
-  │
-  ▼
-[1] Nuxt: /api/ingest/upload → proxy → Rust POST /api/ingest
-  │
-  ▼
-[2] bastion-ingest: converte PDF → Markdown (pandoc / pdf-extract)
-  │  raw/papers/<name>/original.md
-  │
-  ▼
-[3] bastion-llm: LLM extrai notas estruturadas
-  │  raw/papers/<name>/extracted-notes.md
-  │
-  ▼
-[4] bastion-wiki: LLM integra na wiki
-  │  - Cria/atualiza wiki/papers/<name>.md
-  │  - Atualiza páginas de conceitos, comparações, síntese
-  │  - Atualiza wiki/index.md + log.md
-  │
-  ▼
-[5] bastion-store: gera embeddings + índice FTS5
-```
-
-### Chat / Query
-
-```
-Pergunta no chat (Vue)
-  │
-  ▼
-[1] Nuxt: POST /api/chat/query → proxy → Rust POST /api/query
-  │
-  ▼
-[2] Busca combinada (Rust):
-  │  - Lê wiki/index.md → páginas candidatas
-  │  - FTS5 → matches textuais com snippet
-  │  - Embeddings → similaridade semântica (RRF)
-  │
-  ▼
-[3] LLM sintetiza resposta com citações exatas
-  │  (artigo, seção, página)
-  │
-  ▼
-Vue renderiza resposta + painel de referências
-```
-
-### Revisão de Artigo (LaTeX)
-
-```
-Usuário escreve no editor LaTeX
-  │
-  ▼
-[1] Clica "Revisar" → Nuxt POST /api/review/analyze → Rust POST /api/review
-  │
-  ▼
-[2] bastion-review (Rust):
-  │  - Recebe o LaTeX + consulta a wiki
-  │  - Busca decisões em wiki/decisions/
-  │  - Busca artigos relacionados a cada afirmação
-  │  - Identifica contradições
-  │
-  ▼
-[3] LLM retorna sugestões estruturadas
-  │
-  ▼
-[4] Usuário aceita/descarta cada sugestão
-```
-
----
-
-## Decisões de Pesquisa (ADRs)
-
-Armazenadas em `wiki/decisions/` no formato Architecture Decision Record:
-
-```markdown
-# 0001: Não explorar fine-tuning com LoRA
-
-Status: Aceito
-Data: 2026-06-27
-Contexto: Precisávamos decidir entre fine-tuning completo e LoRA
-Decisão: Optamos por fine-tuning completo porque o dataset é pequeno
-Consequências: Maior custo computacional, melhor controle
-Artigos relacionados: [[attention-is-all-you-need]], [[lora-paper]]
-```
-
-Antes de qualquer operação com escolha metodológica, o LLM **deve** consultar
-`wiki/decisions/` para não sugerir abordagens descartadas.
-
----
-
-## Busca e Recuperação
-
-1. **Índice** (`wiki/index.md`) — catálogo de páginas
-2. **FTS5** — busca textual com snippet
-3. **Embeddings** — reranking semântico
-4. **RRF** — merge FTS5 + embeddings
-5. **Fallback** — fontes brutas (`raw/`)
-
-| Cenário | Busca |
+| Tecnologia | Uso |
 |---|---|
-| Pergunta factual | FTS5 + embeddings + índice |
-| "O que sabemos sobre X?" | Índice + FTS5 |
-| Sugestão de revisão | Embeddings + decisões |
-| "Onde no PDF?" | Mapeamento trecho → página |
+| Nuxt 4 (Vue 3 + Nitro) | Framework frontend + proxy para o backend |
+| Nuxt UI + Tailwind CSS 4 | Componentes e estilos |
+| CodeMirror 6 + codemirror-lang-latex | Editor LaTeX integrado |
+| Vue Flow + dagre | Grafo de conhecimento |
+| marked | Renderização Markdown |
+
+**LLM e Embeddings**
+
+| Tecnologia | Uso |
+|---|---|
+| Anthropic, OpenAI, OpenRouter, Gemini | Providers LLM (configurável via `.env`) |
+| OpenAI, Voyage, Gemini | Embeddings para busca semântica |
+
+**Infraestrutura**
+
+| Tecnologia | Uso |
+|---|---|
+| Docker + Docker Compose | Containers para produção e desenvolvimento |
+| pdftotext (poppler) | Conversão PDF → texto |
 
 ---
 
-## Próximos Passos
+## Inspirações
 
-### Fase 1 — Fundação
-- [ ] Workspace Rust (cargo workspace + crates)
-- [ ] `bastion-core`: tipos base
-- [ ] `bastion-store`: SQLite schema + FTS5 + migrações
-- [ ] `bastion-wiki`: CRUD markdown + git checkpoints
-- [ ] `bastion-web`: server axum (API REST + WebSocket)
-- [ ] Nuxt + Tailwind + rotas básicas + proxy para Rust
-- [ ] AGENTS.md
-
-### Fase 2 — Ingestão
-- [ ] `bastion-ingest`: PDF → Markdown
-- [ ] `bastion-llm`: traits para providers
-- [ ] Extração de notas por LLM
-- [ ] Integração com a wiki
-
-### Fase 3 — Busca e Chat
-- [ ] Embeddings
-- [ ] FTS5 + RRF
-- [ ] Chat (WebSocket)
-- [ ] Frontend: Chat + Referências
-
-### Fase 4 — Editor e Revisão
-- [ ] Editor LaTeX (CodeMirror)
-- [ ] `bastion-review`
-- [ ] UI de sugestões
-
-### Fase 5 — Decisões e Wiki
-- [ ] CRUD de decisões (ADRs)
-- [ ] Consulta automática de decisões
-- [ ] Navegador wiki
-- [ ] Lint da wiki
+- [LLM Wiki — Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — conceito e filosofia que fundamenta o projeto
+- [ai-memory — akitaonrails](https://github.com/akitaonrails/ai-memory) — referência de implementação
 
 ---
 
-## Referências
+## Status: v0.0.1
 
-- [LLM Wiki (Karpathy)](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
-- [ai-memory](https://github.com/akitaonrails/ai-memory)
-- [qmd](https://github.com/tobi/qmd)
+Este é o primeiro protótipo funcional do Bastion. Algumas interfaces estão incompletas ou inconsistentes, e há partes do código que refletem mais a exploração do que decisões definitivas de design.
+
+Decidi abrir o código quando o sistema atingiu um nível mínimo de usabilidade — o suficiente para demonstrar o conceito. Também funcionou como laboratório de aprendizado em tecnologias que não dominava, especialmente Rust e Nuxt 4.
+
+É provável que uma v0.2 ou v1.0 venha a ser construída do zero, aproveitando os pontos fortes e corrigindo os fracos identificados nessa iteração. Por isso, contribuições, issues e feedback são bem-vindos — especialmente críticas ao design.
+
+---
+
+## Como Rodar
+
+```bash
+cp .env.example .env
+# edite .env com seu provider LLM e caminhos desejados
+
+docker compose up
+# interface disponível em http://localhost:3000
+```
+
+Para desenvolvimento:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+Veja `.env.example` para todas as variáveis disponíveis (LLM provider, embeddings, caminhos de dados).
