@@ -1,0 +1,30 @@
+[package]
+name        = "bastion-web"
+version.workspace     = true
+edition.workspace     = true
+description = "axum HTTP server for Bastion."
+
+[[bin]]
+name = "bastion-web"
+path = "src/main.rs"
+
+[dependencies]
+bastion-core.workspace   = true
+bastion-store.workspace  = true
+bastion-wiki.workspace   = true
+bastion-llm.workspace    = true
+bastion-review.workspace = true
+serde.workspace         = true
+serde_json.workspace    = true
+chrono.workspace        = true
+thiserror.workspace     = true
+tokio.workspace         = true
+axum.workspace          = true
+tower.workspace         = true
+tower-http.workspace    = true
+tracing.workspace       = true
+tracing-subscriber.workspace = true
+dotenvy.workspace       = true
+futures-util.workspace  = true
+uuid.workspace          = true
+anyhow                  = "1"

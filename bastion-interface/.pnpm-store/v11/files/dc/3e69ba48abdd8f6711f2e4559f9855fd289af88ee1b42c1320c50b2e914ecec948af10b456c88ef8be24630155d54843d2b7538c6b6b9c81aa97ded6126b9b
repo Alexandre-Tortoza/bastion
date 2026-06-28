@@ -1,0 +1,12 @@
+import { Diagnostic } from '@codemirror/lint';
+import { EditorView } from '@codemirror/view';
+export interface LatexLinterOptions {
+    checkMissingDocumentEnv?: boolean;
+    checkUnmatchedEnvironments?: boolean;
+    checkMissingReferences?: boolean;
+    checkUnclosedBraces?: boolean;
+    checkDuplicateLabels?: boolean;
+    checkCitesWithoutBibliography?: boolean;
+    fileName?: string;
+}
+export declare function latexLinter(options?: LatexLinterOptions): (view: EditorView) => Diagnostic[];

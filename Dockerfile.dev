@@ -1,0 +1,6 @@
+FROM rust:1.89-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake pkg-config build-essential poppler-utils ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && cargo install cargo-watch
+WORKDIR /app

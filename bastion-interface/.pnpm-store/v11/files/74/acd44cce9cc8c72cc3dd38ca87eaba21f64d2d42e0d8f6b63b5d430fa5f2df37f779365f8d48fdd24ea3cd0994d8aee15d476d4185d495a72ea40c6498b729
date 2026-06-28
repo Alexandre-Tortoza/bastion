@@ -1,0 +1,23 @@
+import { LRLanguage, LanguageSupport } from '@codemirror/language';
+import { Extension } from '@codemirror/state';
+import { LatexLinterOptions } from './linter';
+export declare const latexBracketMatching: Extension;
+export declare const latexLanguage: LRLanguage;
+export declare const latexExtensions: Extension;
+export declare const latexCompletions: {
+    environments: readonly string[];
+    commands: readonly string[];
+    mathCommands: readonly string[];
+    packages: readonly string[];
+};
+export { autoCloseTags } from './auto-close-tags';
+export { snippets } from './completion';
+export declare function latex(config?: {
+    autoCloseTags?: boolean;
+    enableLinting?: boolean;
+    enableTooltips?: boolean;
+    enableAutocomplete?: boolean;
+    autoCloseBrackets?: boolean;
+    fileName?: string;
+    linter?: LatexLinterOptions;
+}): LanguageSupport;

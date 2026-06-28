@@ -1,0 +1,20 @@
+[package]
+name        = "bastion-review"
+version.workspace     = true
+edition.workspace     = true
+description = "LaTeX review engine and wiki lint runner for Bastion."
+
+[dependencies]
+bastion-core.workspace  = true
+bastion-store.workspace = true
+bastion-wiki.workspace  = true
+bastion-llm.workspace   = true
+serde.workspace         = true
+serde_json.workspace    = true
+thiserror.workspace     = true
+chrono.workspace        = true
+tracing.workspace       = true
+async-trait.workspace   = true
+
+[dev-dependencies]
+tempfile.workspace = true

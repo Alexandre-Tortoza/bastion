@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - wiki:/data/wiki
+      - raw:/data/raw
+      - db:/data/db
+    env_file:
+      - .env          # carrega só as API keys (ANTHROPIC_API_KEY etc.)
+    environment:
+      # Sobrescrevem qualquer path do .env, garantindo que o app
+      # escreva nos volumes montados e não em paths do host.
+      BASTION_WIKI_PATH: /data/wiki
+      BASTION_RAW_PATH: /data/raw
+      BASTION_DB_PATH: /data/db/bastion.sqlite
+      BASTION_BACKEND_PORT: "8080"
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./bastion-interface
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - nuxt_data:/app/.data   # persiste drafts LaTeX e cache Nitro
+    environment:
+      NUXT_BASTION_BACKEND_URL: http://api:8080
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  wiki:
+  raw:
+  db:
+  nuxt_data:

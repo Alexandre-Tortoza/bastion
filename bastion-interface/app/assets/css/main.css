@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "./theme.css";
+
+html, body, #__nuxt {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.wiki-markdown {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.wiki-markdown :where(p, li, blockquote, h1, h2, h3, h4, h5, h6) {
+  max-width: 100%;
+}
+
+.wiki-markdown :where(pre, table) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wiki-markdown :where(pre) {
+  white-space: pre-wrap;
+}
+
+.wiki-markdown :where(code) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

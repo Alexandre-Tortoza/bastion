@@ -1,0 +1,21 @@
+[package]
+name        = "bastion-wiki"
+version.workspace     = true
+edition.workspace     = true
+description = "Markdown wiki CRUD, wikilink resolution, and git versioning for Bastion."
+
+[lib]
+name = "bastion_wiki"
+path = "src/lib.rs"
+
+[dependencies]
+bastion-core.workspace = true
+serde.workspace        = true
+serde_json.workspace   = true
+serde_yaml.workspace   = true
+git2.workspace         = true
+tempfile.workspace     = true
+tracing.workspace      = true
+chrono.workspace       = true
+thiserror.workspace    = true
+walkdir.workspace      = true

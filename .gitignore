@@ -1,0 +1,27 @@
+# Segredos e config local
+.env
+.env.local
+*.local
+
+# Runtime — banco de dados
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Runtime — conteúdo do usuário (wiki tem .git próprio)
+wiki/
+raw/
+
+# Build Rust
+target/
+
+# Frontend
+bastion-interface/node_modules/
+bastion-interface/.nuxt/
+bastion-interface/.output/
+bastion-interface/.data/
+
+# OS
+.DS_Store
+Thumbs.db

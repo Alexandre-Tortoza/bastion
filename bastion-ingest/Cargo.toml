@@ -1,0 +1,13 @@
+[package]
+name        = "bastion-ingest"
+version.workspace = true
+edition.workspace = true
+description = "PDF → Markdown converter subprocess for Bastion."
+
+[[bin]]
+name = "bastion-ingest"
+path = "src/main.rs"
+
+[dependencies]
+serde_json.workspace = true
+clap.workspace       = true

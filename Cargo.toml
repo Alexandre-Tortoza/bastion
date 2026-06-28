@@ -1,0 +1,65 @@
+[workspace]
+resolver = "2"
+members = [
+    "bastion-core",
+    "bastion-store",
+    "bastion-wiki",
+    "bastion-llm",
+    "bastion-ingest",
+    "bastion-review",
+    "bastion-web",
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2024"
+license     = "AGPL-3.0-only"
+repository  = "https://github.com/Alexandre-Tortoza/bastion"
+
+[workspace.dependencies]
+# Intra-workspace crates
+bastion-core   = { path = "bastion-core" }
+bastion-store  = { path = "bastion-store" }
+bastion-wiki   = { path = "bastion-wiki" }
+bastion-llm    = { path = "bastion-llm" }
+bastion-review = { path = "bastion-review" }
+
+# Serialization
+serde       = { version = "1",   features = ["derive"] }
+serde_json  = "1"
+serde_yaml  = "0.9"
+
+# Storage
+rusqlite    = { version = "0.32", features = ["bundled", "backup"] }
+refinery    = { version = "0.8",  features = ["rusqlite"] }
+
+# Git
+git2        = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+
+# IO utilities
+tempfile    = "3"
+walkdir     = "2"
+
+# Async + web
+tokio       = { version = "1", features = ["full"] }
+axum        = { version = "0.8", features = ["multipart"] }
+tower       = "0.5"
+tower-http  = { version = "0.6", features = ["trace", "cors", "fs"] }
+reqwest     = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+async-trait = "0.1"
+futures     = "0.3"
+futures-util = "0.3"
+uuid        = { version = "1", features = ["v4"] }
+bytes       = "1"
+clap        = { version = "4", features = ["derive"] }
+
+# Observability
+tracing                = "0.1"
+tracing-subscriber     = { version = "0.3", features = ["env-filter"] }
+
+# Misc
+chrono      = { version = "0.4", features = ["serde"] }
+thiserror   = "2"
+dotenvy     = "0.15"
+sha2        = "0.10"
+hex         = "0.4"

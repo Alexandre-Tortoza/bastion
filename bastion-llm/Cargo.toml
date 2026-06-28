@@ -1,0 +1,22 @@
+[package]
+name        = "bastion-llm"
+version.workspace = true
+edition.workspace = true
+description = "LLM provider and embedder traits with OpenAI and Anthropic implementations."
+
+[lib]
+name = "bastion_llm"
+path = "src/lib.rs"
+
+[dependencies]
+bastion-core.workspace = true
+serde.workspace        = true
+serde_json.workspace   = true
+thiserror.workspace    = true
+tokio.workspace        = true
+reqwest.workspace      = true
+async-trait.workspace  = true
+futures.workspace      = true
+futures-util.workspace = true
+tracing.workspace      = true
+bytes.workspace        = true

@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: cargo watch -q -c -x "build -p bastion-ingest" -x "run -p bastion-web"
+    volumes:
+      - .:/app                                    # código-fonte montado
+      - dev_cargo_registry:/usr/local/cargo/registry
+      - dev_cargo_git:/usr/local/cargo/git
+      - dev_target:/app/target                    # artefatos de compilação cacheados
+      - wiki:/data/wiki
+      - raw:/data/raw
+      - db:/data/db
+    env_file:
+      - .env
+    environment:
+      BASTION_WIKI_PATH: /data/wiki
+      BASTION_RAW_PATH: /data/raw
+      BASTION_DB_PATH: /data/db/bastion.sqlite
+      BASTION_BACKEND_PORT: "8080"
+      RUST_LOG: info
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./bastion-interface
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: sh -c "pnpm install && pnpm nuxt dev --host 0.0.0.0"
+    volumes:
+      - ./bastion-interface:/app                  # código-fonte montado
+      - dev_node_modules:/app/node_modules        # node_modules cacheados
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_BASTION_BACKEND_URL: http://api:8080
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  wiki:
+  raw:
+  db:
+  dev_cargo_registry:
+  dev_cargo_git:
+  dev_target:
+  dev_node_modules:
